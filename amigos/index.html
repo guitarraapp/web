@@ -1,1 +1,133 @@
-
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>¿Quién paga?</title>
+<style>
+:root{--bg:#eaf0f3;--card:#fff;--tx:#14212b;--mu:#62727e;--ln:#d5dee4;--g:#0c7a6b;--o:#c2610a;--ac:#24456b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f161c;--card:#19232b;--tx:#e8eef2;--mu:#8fa1ad;--ln:#2a3a46;--g:#3fc9b0;--o:#f0a050;--ac:#8db5e6}}
+:root[data-theme="dark"]{--bg:#0f161c;--card:#19232b;--tx:#e8eef2;--mu:#8fa1ad;--ln:#2a3a46;--g:#3fc9b0;--o:#f0a050;--ac:#8db5e6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 "Avenir Next","Segoe UI",system-ui,sans-serif}
+#app{max-width:520px;margin:0 auto;padding:16px 14px 40px}
+h1{font-size:28px;margin:6px 0 14px;font-weight:800;letter-spacing:-.5px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:14px;margin:0 0 12px}
+.big{font-size:23px;font-weight:800;margin:6px 0;line-height:1.2}
+.g{color:var(--g)}.o{color:var(--o)}.n{color:var(--ac)}
+.mu{color:var(--mu);font-size:14px}.c{text-align:center}
+.gauge{position:relative;height:18px;background:var(--ln);border-radius:9px;overflow:hidden;margin-top:10px}
+.gauge i{position:absolute;top:0;bottom:0}.gauge i.g{background:var(--g)}.gauge i.o{background:var(--o)}
+.gauge u{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--tx)}
+.lab{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-top:4px}
+button{font:inherit;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:12px;padding:10px 14px;cursor:pointer}
+.fab{position:sticky;bottom:12px;width:100%;background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:700;padding:14px;margin:6px 0}
+.seg{display:flex;gap:6px;margin:8px 0}.seg button{flex:1;padding:10px 4px}
+.seg .on{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:700}
+input,select,textarea{width:100%;font:inherit;padding:10px;margin:6px 0;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--tx)}
+.row{display:flex;gap:8px;margin-bottom:12px}.row input{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.top,.sp{display:flex;justify-content:space-between;align-items:center}
+.top{margin-bottom:6px}
+a{color:var(--ac);cursor:pointer;text-decoration:none;font-weight:600}.del{color:var(--o)}
+.ev{border-left:3px solid var(--ln);padding:6px 10px;margin:8px 0;background:var(--card);border-radius:0 10px 10px 0}
+.ev.peace{border-color:var(--g)}
+.acts{display:flex;gap:16px;font-size:14px;margin-top:4px}
+label{font-size:13px;color:var(--mu);display:block;margin-top:8px}
+.note{background:var(--card);border:1px dashed var(--o);border-radius:12px;padding:10px;margin-bottom:12px;font-size:14px;cursor:pointer}
+#t{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:20px;display:none;z-index:9}
+textarea{min-height:70px}
+@media print{.top,.fab,button{display:none}}
+</style></head><body><div id="app"></div><div id="t"></div>
+<script>
+const CATS=[['cena','🍽️','Cena/Comida'],['copas','🍸','Copas'],['helado','🍦','Helados y cafés'],['parking','🅿️','Parking'],['gasolina','⛽','Gasolina'],['otro','✨','Otro']];
+const PL={u:'Nosotros',t:'Ellos',h:'A medias'};
+const cn=k=>{const c=CATS.find(x=>x[0]===k)||CATS[5];return c[1]+' '+c[2]};
+function load(){try{const s=JSON.parse(localStorage.getItem('qp'));if(s&&s.friends)return s}catch(e){}return{friends:[],outings:[],peace:[],tol:5,bk:0}}
+let S=load(),V={n:'home'},D=null,arm=null,peaceOpen=false;
+function save(){try{localStorage.setItem('qp',JSON.stringify(S))}catch(e){}}
+const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const eur=n=>(Math.round(n*100)/100).toLocaleString('es-ES')+' €';
+const fd=d=>new Date(d+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const fr=id=>S.friends.find(f=>f.id===id);
+function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',2200)}
+// ---- lógica
+const eff=o=>o.exps.reduce((s,e)=>s+(e.p==='u'?e.a/2:e.p==='t'?-e.a/2:0),0);
+function evs(f){return[...S.outings.filter(o=>o.f===f).map(o=>({t:'o',d:o.date,c:o.c,o})),...S.peace.filter(p=>p.f===f).map(p=>({t:'p',d:p.date,c:p.c,p}))].sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.c-b.c)}
+function segs(f){const r=[];let s={outs:[],end:null,st:null};for(const e of evs(f)){if(e.t==='o')s.outs.push(e.o);else{s.end=e.p;r.push(s);s={outs:[],end:null,st:e.p}}}r.push(s);return r}
+const bal=f=>segs(f).pop().outs.reduce((s,o)=>s+eff(o),0);
+const msg=b=>b>S.tol?['Les toca pagar a ellos','g']:b<-S.tol?['Nos toca pagar a nosotros','o']:['Estamos en paz','n'];
+function car(f){const os=S.outings.filter(o=>o.f===f&&o.car!=='n').sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.c-b.c);
+const lim=new Date(Date.now()-183*864e5).toISOString().slice(0,10),r=os.filter(o=>o.date>=lim),n=(l,k)=>l.filter(o=>o.car===k).length,last=os[os.length-1];
+let nx=null;if(os.length){const a=n(r,'u'),b=n(r,'t');nx=a>b?'t':b>a?'u':(last.car==='u'?'t':'u')}
+return{last,nx,tu:n(os,'u'),tt:n(os,'t'),ru:n(r,'u'),rt:n(r,'t')}}
+const carTxt=k=>k.nx?(k.nx==='t'?'coche: le toca a ellos':'coche: nos toca a nosotros'):'sin datos de coche';
+// ---- navegación
+function go(n,id){V={n,id};arm=null;peaceOpen=false;render();window.scrollTo(0,0)}
+function render(){const a=$('#app');({home:vHome,friend:vFriend,rep:vRep,set:vSet,form:vForm})[V.n](a)}
+function dbtn(k,id){return `<a class="del" onclick="del('${k}','${id}')">${arm===k+id?'¿Seguro? Púlsalo otra vez':'Borrar'}</a>`}
+function del(k,id){if(arm!==k+id){arm=k+id;return render()}arm=null;
+if(k==='o')S.outings=S.outings.filter(o=>o.id!==id);
+if(k==='p')S.peace=S.peace.filter(o=>o.id!==id);
+if(k==='f'){S.friends=S.friends.filter(o=>o.id!==id);S.outings=S.outings.filter(o=>o.f!==id);S.peace=S.peace.filter(o=>o.f!==id)}
+save();render()}
+function addF(){const i=$('#nf'),v=i.value.trim();if(!v)return toast('Escribe un nombre');S.friends.push({id:uid(),name:v});save();render()}
+// ---- vistas
+function vHome(a){let h='<h1>¿Quién paga?</h1>';
+if(S.outings.length&&Date.now()-S.bk>30*864e5)h+='<div class="note" onclick="go(\'set\')">💾 Hace tiempo que no haces copia de seguridad. Toca para hacerla.</div>';
+h+=S.friends.map(f=>{const b=bal(f.id),[t,c]=msg(b),k=car(f.id);return `<div class="card" onclick="go('friend','${f.id}')"><b>${esc(f.name)}</b><div class="big ${c}">${t}</div><div class="mu">Diferencia ${eur(Math.abs(b))} · ${carTxt(k)}</div></div>`}).join('');
+if(!S.friends.length)h+='<div class="card">Empieza añadiendo con quién salís habitualmente.</div>';
+h+='<div class="row"><input id="nf" placeholder="Nuevo amigo o pareja"><button onclick="addF()">Añadir</button></div>';
+if(S.friends.length)h+='<button class="fab" onclick="newO()">+ Nueva salida</button>';
+h+='<p class="c"><a onclick="go(\'set\')">⚙️ Ajustes y copia de seguridad</a></p>';a.innerHTML=h}
+function tl(f,n){return evs(f).reverse().slice(0,n).map(x=>{if(x.t==='p')return `<div class="ev peace">🤝 <b>Declarado en paz</b> · ${fd(x.d)}${x.p.note?`<div class="mu">${esc(x.p.note)}</div>`:''}<div class="acts">${dbtn('p',x.p.id)}</div></div>`;
+const o=x.o;return `<div class="ev"><b>${fd(o.date)}</b>${o.car!=='n'?' · 🚗 '+PL[o.car].toLowerCase():''}${o.exps.map(e=>`<div>${cn(e.k)} · ${eur(e.a)} · ${PL[e.p]}${e.n?` <span class="mu">— ${esc(e.n)}</span>`:''}</div>`).join('')}${o.note?`<div class="mu">💬 ${esc(o.note)}</div>`:''}<div class="acts"><a onclick="editO('${o.id}')">Editar</a>${dbtn('o',o.id)}</div></div>`}).join('')||'<p class="mu c">Aún no hay salidas.</p>'}
+function vFriend(a){const f=fr(V.id);if(!f)return go('home');const b=bal(f.id),[t,c]=msg(b),k=car(f.id),w=Math.min(Math.abs(b)/100,1)*50;
+const ls=k.last?`${PL[k.last.car].toLowerCase()} (${fd(k.last.date)})`:'—';
+a.innerHTML=`<div class="top"><a onclick="go('home')">← Inicio</a><a onclick="go('rep','${f.id}')">📊 Informe</a></div><h1>${esc(f.name)}</h1>
+<div class="card"><div class="big ${c}">${t}</div><div class="gauge"><i class="${b>0?'g':'o'}" style="${b>0?'left':'right'}:50%;width:${w}%"></i><u></u></div><div class="lab"><span>← Nos toca a nosotros</span><span>Les toca a ellos →</span></div><p class="c">Diferencia orientativa: <b>${eur(Math.abs(b))}</b></p></div>
+<div class="card"><b>🚗 Coche</b><div class="big ${k.nx?(k.nx==='t'?'g':'o'):''}">${k.nx?(k.nx==='t'?'Le toca poner el coche a ellos':'Nos toca poner el coche a nosotros'):'Sin datos todavía'}</div><div class="mu">Último: ${ls}<br>Total: nosotros ${k.tu} · ellos ${k.tt}<br>Últimos 6 meses: nosotros ${k.ru} · ellos ${k.rt}</div></div>
+<button class="fab" onclick="newO('${f.id}')">+ Nueva salida</button>
+<div class="card">${peaceOpen?`<label>Nota (opcional)</label><input id="pn" placeholder="Ej: compensado con la cena de cumpleaños"><div class="row"><button onclick="peaceOpen=false;render()">Cancelar</button><button onclick="doPeace()">Confirmar en paz</button></div>`:`<button style="width:100%" onclick="peaceOpen=true;render()">🤝 Declarar en paz</button>`}</div>
+<h3>Últimos movimientos</h3>${tl(f.id,8)}<p class="c"><a onclick="go('rep','${f.id}')">Ver historial completo</a></p>`}
+function doPeace(){S.peace.push({id:uid(),f:V.id,date:today(),note:$('#pn').value.trim(),c:Date.now()});save();peaceOpen=false;render();toast('Marcado: estamos en paz')}
+// formulario
+function newO(f){D={id:null,f:f||(V.n==='friend'?V.id:S.friends[0].id),date:today(),exps:[],car:'n',note:''};go('form')}
+function editO(id){D=JSON.parse(JSON.stringify(S.outings.find(o=>o.id===id)));go('form')}
+function seg(path,val,opts){return `<div class="seg">${Object.entries(opts).map(([k,l])=>`<button class="${k===val?'on':''}" onclick="${path}='${k}';render()">${l}</button>`).join('')}</div>`}
+function addE(k){D.exps.push({k,p:'h',a:0,n:''});render()}
+function vForm(a){a.innerHTML=`<div class="top"><a onclick="D.id?go('friend',D.f):go('home')">← Cancelar</a></div><h1>${D.id?'Editar':'Nueva'} salida</h1>
+<div class="card"><label>Con quién</label><select onchange="D.f=this.value">${S.friends.map(f=>`<option value="${f.id}" ${f.id===D.f?'selected':''}>${esc(f.name)}</option>`).join('')}</select><label>Fecha</label><input type="date" value="${D.date}" onchange="D.date=this.value"></div>
+${D.exps.map((e,i)=>`<div class="card"><div class="sp"><b>${cn(e.k)}</b><a class="del" onclick="D.exps.splice(${i},1);render()">Quitar</a></div><label>¿Quién pagó?</label>${seg('D.exps['+i+'].p',e.p,PL)}<input type="number" inputmode="decimal" placeholder="Importe aproximado en €" value="${e.a||''}" oninput="D.exps[${i}].a=+this.value||0"><input placeholder="Comentario (opcional)" value="${esc(e.n)}" oninput="D.exps[${i}].n=this.value"></div>`).join('')}
+<div class="card"><label>Añadir gasto</label><div class="chips">${CATS.map(c=>`<button onclick="addE('${c[0]}')">${c[1]} ${c[2]}</button>`).join('')}</div></div>
+<div class="card"><label>🚗 ¿Quién puso el coche?</label>${seg('D.car',D.car,{n:'Ninguno',u:'Nosotros',t:'Ellos'})}<label>Comentario de la salida</label><textarea oninput="D.note=this.value" placeholder="Opcional">${esc(D.note)}</textarea></div>
+<button class="fab" onclick="saveO()">Guardar salida</button>`}
+function saveO(){if(!D.exps.length&&D.car==='n')return toast('Añade algún gasto o el coche');
+if(D.id)S.outings=S.outings.map(o=>o.id===D.id?D:o);else{D.id=uid();D.c=Date.now();S.outings.push(D)}
+save();const f=D.f;D=null;go('friend',f);toast('Salida guardada')}
+// informe
+function chart(f){let v=0,p=[0],m=[];for(const e of evs(f)){if(e.t==='o'){v+=eff(e.o);p.push(v)}else{v=0;p.push(0);m.push(p.length-1)}}
+if(p.length<2)return '<p class="mu">Sin datos todavía.</p>';
+const W=320,H=130,mx=Math.max(10,...p.map(Math.abs)),x=i=>10+i*(W-20)/(p.length-1),y=v=>H/2-v/mx*(H/2-14);
+return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block"><line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="var(--ln)"/>${m.map(i=>`<line x1="${x(i)}" x2="${x(i)}" y1="12" y2="${H}" stroke="var(--g)" stroke-dasharray="3 3"/><text x="${x(i)}" y="10" font-size="10" text-anchor="middle">🤝</text>`).join('')}<polyline fill="none" stroke="var(--ac)" stroke-width="2.5" points="${p.map((v,i)=>x(i)+','+y(v)).join(' ')}"/></svg><div class="lab"><span>↓ Nos toca a nosotros</span><span>Les toca a ellos ↑</span></div>`}
+function vRep(a){const f=fr(V.id),ss=segs(f.id),ct={};
+S.outings.filter(o=>o.f===f.id).forEach(o=>o.exps.forEach(e=>ct[e.k]=(ct[e.k]||0)+e.a));
+const sm=(os,p)=>os.reduce((x,o)=>x+o.exps.filter(e=>e.p===p).reduce((y,e)=>y+e.a,0),0);
+a.innerHTML=`<div class="top"><a onclick="go('friend','${f.id}')">← ${esc(f.name)}</a><a onclick="window.print()">🖨️ Imprimir</a></div><h1>Informe · ${esc(f.name)}</h1>
+<div class="card"><b>Saldo a lo largo del tiempo</b>${chart(f.id)}</div>
+<h3>Tramos entre «en paz»</h3>${ss.map(s=>{const d0=s.st?fd(s.st.date):(s.outs[0]?fd(s.outs[0].date):'—'),b=s.outs.reduce((x,o)=>x+eff(o),0);
+return `<div class="card"><b>${d0} → ${s.end?fd(s.end.date)+' 🤝':'hoy (tramo actual)'}</b><div class="mu">${s.outs.length} salidas<br>Pagamos nosotros: ${eur(sm(s.outs,'u'))} · Pagaron ellos: ${eur(sm(s.outs,'t'))} · A medias: ${eur(sm(s.outs,'h'))}<br>Saldo del tramo: ${eur(Math.abs(b))} ${Math.abs(b)<.01?'':b>0?'a nuestro favor':'a su favor'}<br>Coche: nosotros ${s.outs.filter(o=>o.car==='u').length} · ellos ${s.outs.filter(o=>o.car==='t').length}${s.end&&s.end.note?`<br>🤝 ${esc(s.end.note)}`:''}</div></div>`}).reverse().join('')}
+<h3>Total por categoría</h3><div class="card">${Object.entries(ct).map(([k,v])=>`<div class="sp"><span>${cn(k)}</span><b>${eur(v)}</b></div>`).join('')||'<span class="mu">Sin gastos.</span>'}</div>
+<h3>Todas las salidas</h3>${tl(f.id,999)}`}
+// ajustes
+function importB(){try{const o=JSON.parse($('#imp').value);if(!Array.isArray(o.friends)||!Array.isArray(o.outings))throw 0;S=Object.assign({peace:[],tol:5,bk:0},o);save();toast('Copia restaurada');go('home')}catch(e){toast('Texto de copia no válido')}}
+function copyB(){const t=$('#bk');t.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}
+S.bk=Date.now();save();toast(ok?'Copiado. Pégalo en una nota o mensaje':'Selecciona y copia el texto a mano')}
+function vSet(a){a.innerHTML=`<div class="top"><a onclick="go('home')">← Inicio</a></div><h1>Ajustes</h1>
+<div class="card"><label>Margen de tolerancia para «estamos en paz» (€)</label><input type="number" inputmode="decimal" value="${S.tol}" onchange="S.tol=Math.max(0,+this.value||0);save();toast('Guardado')"></div>
+<div class="card"><b>Amigos</b>${S.friends.map(f=>`<div class="sp" style="margin-top:8px"><span>${esc(f.name)}</span>${dbtn('f',f.id)}</div>`).join('')||'<p class="mu">Ninguno.</p>'}<div class="row" style="margin-top:10px"><input id="nf" placeholder="Nuevo amigo o pareja"><button onclick="addF()">Añadir</button></div><p class="mu">Borrar un amigo borra también su historial.</p></div>
+<div class="card"><b>💾 Copia de seguridad</b><p class="mu">Última copia: ${S.bk?fd(new Date(S.bk).toISOString().slice(0,10)):'nunca'}. Guarda este texto en un sitio seguro (notas, mensaje a ti mismo).</p><textarea id="bk" readonly>${esc(JSON.stringify(S))}</textarea><button onclick="copyB()">Copiar copia</button>
+<label style="margin-top:14px">Restaurar desde una copia</label><textarea id="imp" placeholder="Pega aquí el texto de la copia"></textarea><button onclick="importB()">Restaurar (sustituye los datos actuales)</button></div>`}
+render();
+</script></body></html>
